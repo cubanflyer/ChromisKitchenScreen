@@ -25,6 +25,7 @@ package uk.chromis.utils;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.UUID;
 import org.hibernate.Query;
 import org.hibernate.SQLQuery;
 import org.hibernate.Session;
@@ -95,5 +96,29 @@ public class DataLogicKitchen {
         List<Orders> results = query.list();
         return results;
     }
+	 
+	 
+	 /* N Deppe Sept 2015 - Added to be able to create new order records for recall function */
+	 public void createOrder(Orders orderData) {
+		String newId = UUID.randomUUID().toString();
+		sql_query = "INSERT INTO ORDERS (ID, ORDERID, QTY, DETAILS, ATTRIBUTES, NOTES, TICKETID, ORDERTIME, DISPLAYID)"
+					  + " VALUES ( :id, :orderid, :qty, :details, :attributes, :notes, :ticketid, :ordertime, :displayid )";
+		init();
+		session.beginTransaction();
+		query = session.createSQLQuery(sql_query);
+		query.setParameter("id", newId);
+		query.setParameter("orderid", orderData.getOrderid());
+		query.setParameter("qty", orderData.getQty());
+		query.setParameter("details", orderData.getDetails());
+		query.setParameter("attributes", orderData.getAttributes());
+		query.setParameter("notes", orderData.getNotes());
+		query.setParameter("ticketid", orderData.getTicketid());
+		query.setParameter("ordertime", orderData.getOrdertime());
+		query.setParameter("displayid", orderData.getDisplayid());
+		int result = query.executeUpdate();
+		session.getTransaction().commit();
+		session.close();		 
+	}
+	 
 
 }

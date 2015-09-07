@@ -26,33 +26,48 @@ package uk.chromis.dto;
 
 
 
+import java.io.Serializable;
 import java.sql.Timestamp;
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 
 @Entity(name = "ORDERS")
-public class Orders {
+@Table(name="ORDERS", uniqueConstraints = {@UniqueConstraint(columnNames = "ID")})
+public class Orders implements Serializable {
 
     @Id
-    @Column(name = "ID")
+	 @GeneratedValue( strategy = GenerationType.AUTO )
+    @Column(name = "ID", unique = true, nullable = false, length = 50)
     private String id;
-    @Column(name = "ORDERID")
+	 
+    @Column(name = "ORDERID", nullable = true, length = 50)
     private String orderid;
+	 
     @Column(name = "QTY")
     private Integer qty;
-    @Column(name = "DETAILS")
+	 
+    @Column(name = "DETAILS", nullable = true, length = 255)
     private String details;
-    @Column(name = "ATTRIBUTES")
+	 
+    @Column(name = "ATTRIBUTES", nullable = true, length = 255)
     private String attributes;
-    @Column(name = "NOTES")
+	 
+    @Column(name = "NOTES", nullable = true, length = 255)
     private String notes;
-    @Column(name = "TICKETID")
+	 
+    @Column(name = "TICKETID", nullable = true, length = 50)
     private String ticketid;
-    @Column(name = "ORDERTIME")
+	 
+    @Column(name = "ORDERTIME", nullable = true)
     private Timestamp ordertime;
-    @Column(name = "DISPLAYID")
+	 
+    @Column(name = "DISPLAYID", nullable = true)
     private Integer displayid;
 
     /**
