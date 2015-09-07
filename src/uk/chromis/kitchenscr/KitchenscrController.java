@@ -30,6 +30,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -47,6 +48,7 @@ import javafx.scene.input.MouseEvent;
 import uk.chromis.dto.Orders;
 import uk.chromis.forms.AppConfig;
 import uk.chromis.utils.DataLogicKitchen;
+import uk.chromis.utils.FixedStack;
 
 /**
  * FXML Controller class
@@ -90,7 +92,8 @@ public class KitchenscrController implements Initializable {
     private Label tmpLabel;
     private DateFormat dateFormat;
     private String hms;
-    public static String selectedOrder;
+    public static String selectedOrderId;
+	 public static List<Orders> selectedOrder;
     private DataLogicKitchen dl_kitchen;
     private List<String> distinct;
     private List<Orders> orders;
@@ -104,6 +107,11 @@ public class KitchenscrController implements Initializable {
     public static HashMap<Integer, ObservableList> orderLists = new HashMap<>();
 
     public static HashMap<Integer, String> orderIds = new HashMap<>();
+	 
+	 /* N Deppe Sept 2015 - Added to keep a list of complete order data by block */
+	 public static HashMap<Integer, List<Orders>> orderDataList = new HashMap<>();
+	 public static HashMap<Integer, Orders> orderData = new HashMap<>();
+
 
     public static ObservableList ordersWaiting = FXCollections.observableArrayList();
     public static ObservableList order0list = FXCollections.observableArrayList();
@@ -114,6 +122,10 @@ public class KitchenscrController implements Initializable {
     public static ObservableList order5list = FXCollections.observableArrayList();
     public static ObservableList order6list = FXCollections.observableArrayList();
     public static ObservableList order7list = FXCollections.observableArrayList();
+	 
+	 /* N Deppe Sept 2015 - Keeps track of all closed orders, up to 10 */
+	 private FixedStack<List<Orders>> closedOrders;
+	 
 
     private class PrintTimeAction implements ActionListener {
 
@@ -152,40 +164,52 @@ public class KitchenscrController implements Initializable {
         }
 
         dl_kitchen = new DataLogicKitchen();
+		  
+		  // N. Deppe - Keep stack of all closed orders
+		  // Hard-coding stack size to 10 - this will keep a maximum of 10 orders in history
+		  closedOrders = new FixedStack<>(10);
         
         new javax.swing.Timer(1000, new PrintTimeAction()).start();
         new javax.swing.Timer(5000, new updateDisplay()).start();
 
         order0items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(0);
+			  selectedOrder = orderDataList.get(0);
+            selectedOrderId = orderIds.get(0);
             updateButtonText(ticketIds.get(0));
         });
         order1items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(1);
+			  selectedOrder = orderDataList.get(1);
+            selectedOrderId = orderIds.get(1);
             updateButtonText(ticketIds.get(1));
         });
         order2items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(2);
+			  	selectedOrder = orderDataList.get(2);
+            selectedOrderId = orderIds.get(2);
             updateButtonText(ticketIds.get(2));
         });
         order3items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(3);
+			  	selectedOrder = orderDataList.get(3);
+            selectedOrderId = orderIds.get(3);
             updateButtonText(ticketIds.get(3));
         });
         order4items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(4);
+			  	selectedOrder = orderDataList.get(4);
+            selectedOrderId = orderIds.get(4);
             updateButtonText(ticketIds.get(4));
         });
         order5items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(5);
+			  	selectedOrder = orderDataList.get(5);
+            selectedOrderId = orderIds.get(5);
             updateButtonText(ticketIds.get(5));
         });
         order6items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(6);
+			  	selectedOrder = orderDataList.get(6);
+            selectedOrderId = orderIds.get(6);
             updateButtonText(ticketIds.get(6));
         });
         order7items.setOnMouseClicked((MouseEvent event) -> {
-            selectedOrder = orderIds.get(7);
+			  	selectedOrder = orderDataList.get(7);
+            selectedOrderId = orderIds.get(7);
             updateButtonText(ticketIds.get(7));
         });
 
@@ -235,13 +259,30 @@ public class KitchenscrController implements Initializable {
     }
 
     public void handleCompleteOrder() {
-        if (selectedOrder != null) {;
-            dl_kitchen.removeOrder(selectedOrder);
-            selectedOrder = null;
+        if (selectedOrderId != null) {
+            dl_kitchen.removeOrder(selectedOrderId);
+				closedOrders.push(selectedOrder);  // add to closed order history
+            selectedOrderId = null;
+				selectedOrder = null;
             updateButtonText("");
         }
         buildOrderPanels();
     }
+	 
+	 /* N Deppe Sept 2015 - Recall order functionality */
+	 public void handleRecallOrder() {
+		 List<Orders> lastOrder;
+		 if (!closedOrders.isEmpty()) {
+			 lastOrder = closedOrders.pop();
+			 for ( Orders currOrder : lastOrder ) {
+				 dl_kitchen.createOrder(currOrder);
+			 }
+			 selectedOrderId = null;
+			 selectedOrder = null;
+			 buildOrderPanels();
+		 }
+	 }
+	 
 
     private void updateClock() {
         clock.setText(dateFormat.format(new Date()));
@@ -294,7 +335,7 @@ public class KitchenscrController implements Initializable {
     }
 
     private void updateButtonText(String id) {
-        if (selectedOrder == null) {
+        if (selectedOrderId == null) {
             completed.setText("");
         } else {
             completed.setText("Order :  '" + id + "'  Complete.");
@@ -309,15 +350,18 @@ public class KitchenscrController implements Initializable {
     }
 
     private void buildOrderPanels() {
+		 
         resetItemDisplays();
 
         // Get list of unique orders
         distinct = dl_kitchen.readDistinctOrders();
+		  KitchenscrController.orderDataList.clear();
 
         // Populate the panel up to 8 orders
         for (int j = 0; (j < 8 && j < distinct.size()); j++) {
 
             orders = dl_kitchen.selectByOrderId(distinct.get(j));
+				KitchenscrController.orderDataList.put(j, orders);
 
             for (Orders order : orders) {
                 KitchenscrController.ticketIds.put(j, order.getTicketid());
